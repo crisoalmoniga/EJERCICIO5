@@ -23,7 +23,7 @@ x86/
 Debug/
 Release/
 *.exe
-*.dll
+.dll
 *.lib
 *.exp
 # Ignorar todos los DLL (como los de SFML)
@@ -51,6 +51,7 @@ Thumbs.db
 
 # Visual Studio Code
 .vscode/
+.vs/
 
 # Proyecto de GitHub Desktop
 .git/
