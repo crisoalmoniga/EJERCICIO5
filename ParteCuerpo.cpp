@@ -14,11 +14,14 @@ ParteCuerpo::ParteCuerpo(b2World& world, float x, float y, float width, float he
     b2PolygonShape shape;
     shape.SetAsBox((width / 2) / SCALE, (height / 2) / SCALE);
 
-    // Fixture
+    // Fixture rígido
     b2FixtureDef fixtureDef;
     fixtureDef.shape = &shape;
-    fixtureDef.density = 1.0f;
-    fixtureDef.friction = 0.3f;
+    fixtureDef.density = 5.0f;       // Alta densidad = más masa
+    fixtureDef.friction = 0.6f;      // Fricción más fuerte
+    fixtureDef.restitution = 0.0f;   // Sin rebote
+    fixtureDef.filter.categoryBits = 0x0001;
+    fixtureDef.filter.maskBits = 0xFFFF;
     body->CreateFixture(&fixtureDef);
 
     // Gráfico SFML

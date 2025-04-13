@@ -5,83 +5,65 @@
 #define SCALE 100.0f
 
 int main() {
-    sf::RenderWindow window(sf::VideoMode(800, 600), "Ejercicio 5 - Mario Ragdoll");
+    sf::RenderWindow window(sf::VideoMode(800, 600), "Ragdoll - Brazos con límite");
     window.setFramerateLimit(60);
 
-    b2Vec2 gravity(0.f, 0.0f);
+    b2Vec2 gravity(0.f, 9.8f);
     b2World world(gravity);
 
-    // Crear el piso
-    b2BodyDef groundBodyDef;
-    groundBodyDef.position.Set(0.f, 0.f);
-    b2Body* ground = world.CreateBody(&groundBodyDef);
+    // Piso
+    b2BodyDef groundDef;
+    groundDef.position.Set(0.f, 0.f);
+    b2Body* ground = world.CreateBody(&groundDef);
 
     b2EdgeShape edge;
+    edge.SetTwoSided(b2Vec2(0, 6), b2Vec2(8, 6));
     b2FixtureDef fixture;
     fixture.shape = &edge;
-
-    edge.SetTwoSided(b2Vec2(0, 6), b2Vec2(8, 6));
     ground->CreateFixture(&fixture);
 
-    // === Crear partes del cuerpo ===
-    ParteCuerpo cabeza(world, 400, 200, 80, 80);        // x, y, ancho, alto
+    // Cuerpos
+    ParteCuerpo cabeza(world, 400, 200, 80, 80);
     ParteCuerpo torso(world, 400, 300, 100, 100);
     ParteCuerpo brazoIzq(world, 330, 300, 60, 20);
     ParteCuerpo brazoDer(world, 470, 300, 60, 20);
-    ParteCuerpo piernaIzq(world, 370, 420, 25, 90);
-    ParteCuerpo piernaDer(world, 430, 420, 25, 90);
+    ParteCuerpo piernaIzq(world, 380, 420, 25, 90);
+    ParteCuerpo piernaDer(world, 420, 420, 25, 90);
 
-    // === Joints ===
-    b2DistanceJointDef jointDef;
+    b2Vec2 centroTorso = torso.getBody()->GetWorldCenter();
 
-    // Cabeza - Torso
-    jointDef.bodyA = cabeza.getBody();
-    jointDef.bodyB = torso.getBody();
-    jointDef.localAnchorA.Set(0, 40 / SCALE);  // abajo de la cabeza
-    jointDef.localAnchorB.Set(0, -50 / SCALE); // arriba del torso
-    jointDef.length = 0.01f;
-    world.CreateJoint(&jointDef);
-
-    // Brazo Izquierdo - Torso
-    jointDef.bodyA = brazoIzq.getBody();
-    jointDef.bodyB = torso.getBody();
-    jointDef.localAnchorA.Set(30 / SCALE, 0);     // derecha del brazo
-    jointDef.localAnchorB.Set(-50 / SCALE, 0);    // izquierda del torso
-    jointDef.length = 0.01f;
-    world.CreateJoint(&jointDef);
-
-    // Brazo Derecho - Torso
-    jointDef.bodyA = brazoDer.getBody();
-    jointDef.bodyB = torso.getBody();
-    jointDef.localAnchorA.Set(-30 / SCALE, 0);     // izquierda del brazo
-    jointDef.localAnchorB.Set(50 / SCALE, 0);      // derecha del torso
-    jointDef.length = 0.01f;
-    world.CreateJoint(&jointDef);
-
-    // Pierna Izquierda - Torso
-    jointDef.bodyA = piernaIzq.getBody();
-    jointDef.bodyB = torso.getBody();
-    jointDef.localAnchorA.Set(0, -45 / SCALE);    // arriba de la pierna
-    jointDef.localAnchorB.Set(-20 / SCALE, 50 / SCALE); // abajo izquierda del torso
-    jointDef.length = 0.01f;
-    world.CreateJoint(&jointDef);
-
-    // Pierna Derecha - Torso
-    jointDef.bodyA = piernaDer.getBody();
-    jointDef.bodyB = torso.getBody();
-    jointDef.localAnchorA.Set(0, -45 / SCALE);    // arriba de la pierna
-    jointDef.localAnchorB.Set(20 / SCALE, 50 / SCALE); // abajo derecha del torso
-    jointDef.length = 0.01f;
-    world.CreateJoint(&jointDef);
-
-    // Dibujar joints
-    auto drawJoint = [&](b2Body* a, b2Body* b) {
-        sf::Vertex line[] = {
-            sf::Vertex(sf::Vector2f(a->GetPosition().x * SCALE, a->GetPosition().y * SCALE), sf::Color::Green),
-            sf::Vertex(sf::Vector2f(b->GetPosition().x * SCALE, b->GetPosition().y * SCALE), sf::Color::Green)
+    // Función general para joints sin límite
+    auto unirRevoluteLibre = [&](b2Body* a, b2Body* b, b2Vec2 puntoMundo) {
+        b2RevoluteJointDef jointDef;
+        jointDef.bodyA = a;
+        jointDef.bodyB = b;
+        jointDef.localAnchorA = a->GetLocalPoint(puntoMundo);
+        jointDef.localAnchorB = b->GetLocalPoint(puntoMundo);
+        jointDef.collideConnected = false;
+        jointDef.enableLimit = false;
+        world.CreateJoint(&jointDef);
         };
-        window.draw(line, 2, sf::Lines);
+
+    // Función para brazos con límite
+    auto unirBrazoConLimite = [&](b2Body* a, b2Body* b, b2Vec2 puntoMundo) {
+        b2RevoluteJointDef jointDef;
+        jointDef.bodyA = a;
+        jointDef.bodyB = b;
+        jointDef.localAnchorA = a->GetLocalPoint(puntoMundo);
+        jointDef.localAnchorB = b->GetLocalPoint(puntoMundo);
+        jointDef.collideConnected = false;
+        jointDef.enableLimit = true;
+        jointDef.lowerAngle = -0.5f;  // -30 grados
+        jointDef.upperAngle = 0.5f;  // 30 grados
+        world.CreateJoint(&jointDef);
         };
+
+    // Uniones
+    unirRevoluteLibre(cabeza.getBody(), torso.getBody(), centroTorso + b2Vec2(0, -0.6f));
+    unirBrazoConLimite(brazoIzq.getBody(), torso.getBody(), centroTorso + b2Vec2(-0.6f, 0));
+    unirBrazoConLimite(brazoDer.getBody(), torso.getBody(), centroTorso + b2Vec2(0.6f, 0));
+    unirRevoluteLibre(piernaIzq.getBody(), torso.getBody(), centroTorso + b2Vec2(-0.2f, 0.7f));
+    unirRevoluteLibre(piernaDer.getBody(), torso.getBody(), centroTorso + b2Vec2(0.2f, 0.7f));
 
     while (window.isOpen()) {
         sf::Event event;
@@ -100,12 +82,6 @@ int main() {
         brazoDer.draw(window);
         piernaIzq.draw(window);
         piernaDer.draw(window);
-
-        drawJoint(cabeza.getBody(), torso.getBody());
-        drawJoint(brazoIzq.getBody(), torso.getBody());
-        drawJoint(brazoDer.getBody(), torso.getBody());
-        drawJoint(piernaIzq.getBody(), torso.getBody());
-        drawJoint(piernaDer.getBody(), torso.getBody());
 
         window.display();
     }
